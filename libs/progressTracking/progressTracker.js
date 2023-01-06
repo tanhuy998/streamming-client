@@ -3,17 +3,17 @@ const {EventEmitter} = require('node:events')
 
 class ProgressState {
 
-    get REACHED() {
+    static get REACHED() {
 
-        return 0x2;
+        return -1;
     }
 
-    get PENDING() {
+    static get PENDING() {
 
         return 0x0;
     }
 
-    get COMPLETE() {
+    static get COMPLETE() {
 
         return 0x1;
     }
@@ -60,6 +60,12 @@ class ProgressTracker extends EventEmitter {
     #cacheExpired;
 
     /**
+     * 
+     * @property {Symbol}
+     */
+    #symbol
+
+    /**
      *  Constructor
      * 
      * @param {string} _name The Progress's name
@@ -67,46 +73,53 @@ class ProgressTracker extends EventEmitter {
      */
     constructor(_name, ...list) {
 
+        super();
+
         this.#childProgresses = list;
         this.#name = _name;
         this.#state = ProgressState.REACHED;
         this.#uncompletedCache = undefined;
-        this.#cacheExpired = false;
+        this.#cacheExpired = true;
+        this.#symbol = Symbol(_name);
 
         this.#Init();
         this.#InitializeEvents();
+
+        this.#state = ProgressState.PENDING;
+        console.log(this.#childProgresses);
     }
 
     #Init() {
 
         if (!this.#name) throw new Error('Progress object must has a name');
 
+        const temp = {};
+
         for (const child of this.#childProgresses) {
 
             if (!(child instanceof ProgressTracker)) throw new Error('...list must be list of Progress instance');
-
-            if (!child.completed) this.#state = ProgressState.PENDING;            
+        
+            temp[child.symbolName] = child;
         }
 
+        this.#childProgresses = temp;
     }
 
     #InitializeEvents() {
-        this.#events.on('reached', () => {
+        this.on('reached', () => {
 
         });
 
-        this.#events.on('pending', () => {
+        this.on('pending', () => {
 
         })
 
-        this.#events.on('completed', () => {
-
-            this.#state = ProgressState.COMPLETE;
+        this.on('completed', () => {
 
 
         })
 
-        this.#events.on('update', function(_progress) {
+        this.on('update', function(_progress) {
 
 
         }.bind(this))
@@ -114,7 +127,7 @@ class ProgressTracker extends EventEmitter {
 
     /**
      *  Acknowledge a child Progress
-     *  and update progress state
+     *  and update internal progress state
      *  
      *  Emit event: 'update'
      * 
@@ -123,12 +136,16 @@ class ProgressTracker extends EventEmitter {
      */
     acknowledge(_progress) {
 
+        // just only a parent progress acknowledges it's child
+        if (!this.isAtomic) return false;
+
         if (!_progress.isChildOf(this)) return false;
 
-        if (!_progress.completed) return false;
+        if ((!_progress.completed)) return false;
 
         if (this.#state == ProgressState.COMPLETE) return false; 
 
+        // when met all prerequesites above
 
         if (this.#state == ProgressState.REACHED) {
 
@@ -140,22 +157,67 @@ class ProgressTracker extends EventEmitter {
             }, this)
         }
 
-        process.nextTick((_this) => {
-            this.emit('update', _progress)
-        }, this, _progress)
+        this.#cacheExpired = true;
 
         this.#updateState();
 
+        process.nextTick((_this, _progress) => {
+            
+            this.emit('update', _progress)
+        }, this, _progress)
+
         return true;
     }
+    /**
+     * Mark this progress is completed
+     * This method is used for atomic progress
+     * 
+     * @return {boolean}
+     */
+    done() {
 
+        if (!this.isAtomic) return false;
+
+        this.#state = ProgressState.COMPLETE;
+
+        process.nextTick((_this) => {
+
+            _this.emit('completed');
+        }, this)
+
+        return this.#parentProgress.acknowledge(this);
+    }
+
+
+    /**
+     * Check if this is atomic progress
+     * 
+     * *Atomic progress meanning that a progress has no sub(child) progresses
+     */
+    get isAtomic() {
+
+        return (this.#childProgresses.length == 0);
+    }
+
+    /**
+     *  Update a non atomic progress's state
+     *  If all child processes completed
+     *  Notify parent progress for acknowledgement
+     */
     #updateState() {
 
         const uncompleted_progresses = this.uncompleted;
 
         if (uncompleted_progresses.length != 0) return;
-
+        
         this.#state = ProgressState.COMPLETE;
+
+        process.nextTick((_this) => {
+
+            _this.emit('completed');
+        }, this)
+
+        this.#parentProgress.acknowledge(this);
     }
 
     /**
@@ -173,11 +235,11 @@ class ProgressTracker extends EventEmitter {
      */
     push(_progress) {
 
-        if (this.#progresses_list[_progress.name]) return false;
+        if (this.#childProgresses[_progress.symbolName]) return false;
 
         if (!_progress.isRoot) return false;
 
-        this.#progresses_list[_progress.name] = _progress;
+        this.#childProgresses[_progress.symbolName] = _progress;
 
         return true;
     }
@@ -193,8 +255,6 @@ class ProgressTracker extends EventEmitter {
 
     get completed() {
 
-
-
         return (this.#state == ProgressState.COMPLETE);
     }
 
@@ -203,20 +263,31 @@ class ProgressTracker extends EventEmitter {
         return this.#name;
     }
 
+    get symbolName() {
+
+        return this.#symbol;
+    }
+
+    /**
+     * List of uncompleted progress's name
+     * 
+     * @return {array<string>} eg. ['progress1', 'progress2', 'progress3']
+     */
     get uncompleted() {
 
         if (!this.#cacheExpired) return this.#uncompletedCache; 
 
         this.#uncompletedCache = Object.keys(this.#childProgresses)
-                    .filter(function (name) {
-                    
-                        const progress = this.#childProgresses[name]
+                                    .filter(function (name) {
+                                        
+                                        const progress = this.#childProgresses[name]
 
-                        return (!progress.completed);
-                    }.bind(this));
-
-        this.#cacheExpired = fasle;
-
+                                        return (!progress.completed);
+                                    }.bind(this));
+                
+        this.#cacheExpired = false;
+        
+        // just return list of uncompleted progress's name
         return this.#uncompletedCache;
     }
 }

@@ -66,6 +66,11 @@ class ProgressTracker extends EventEmitter {
     #symbol
 
     /**
+     * 
+     */
+    #numberOfChild
+
+    /**
      *  Constructor
      * 
      * @param {string} _name The Progress's name
@@ -75,6 +80,7 @@ class ProgressTracker extends EventEmitter {
 
         super();
 
+        this.#numberOfChild = 0;
         this.#childProgresses = list;
         this.#name = _name;
         this.#state = ProgressState.REACHED;
@@ -86,7 +92,6 @@ class ProgressTracker extends EventEmitter {
         this.#InitializeEvents();
 
         this.#state = ProgressState.PENDING;
-        console.log(this.#childProgresses);
     }
 
     #Init() {
@@ -100,6 +105,10 @@ class ProgressTracker extends EventEmitter {
             if (!(child instanceof ProgressTracker)) throw new Error('...list must be list of Progress instance');
         
             temp[child.symbolName] = child;
+
+            child.join(this);
+
+            this.#numberOfChild++;
         }
 
         this.#childProgresses = temp;
@@ -137,7 +146,7 @@ class ProgressTracker extends EventEmitter {
     acknowledge(_progress) {
 
         // just only a parent progress acknowledges it's child
-        if (!this.isAtomic) return false;
+        //if (!this.isAtomic) return false;
 
         if (!_progress.isChildOf(this)) return false;
 
@@ -184,20 +193,10 @@ class ProgressTracker extends EventEmitter {
 
             _this.emit('completed');
         }, this)
-
+        
         return this.#parentProgress.acknowledge(this);
     }
 
-
-    /**
-     * Check if this is atomic progress
-     * 
-     * *Atomic progress meanning that a progress has no sub(child) progresses
-     */
-    get isAtomic() {
-
-        return (this.#childProgresses.length == 0);
-    }
 
     /**
      *  Update a non atomic progress's state
@@ -206,7 +205,7 @@ class ProgressTracker extends EventEmitter {
      */
     #updateState() {
 
-        const uncompleted_progresses = this.uncompleted;
+        const uncompleted_progresses = this.uncompletedProgress;
 
         if (uncompleted_progresses.length != 0) return;
         
@@ -217,15 +216,36 @@ class ProgressTracker extends EventEmitter {
             _this.emit('completed');
         }, this)
 
+        if (this.isRoot) return;
         this.#parentProgress.acknowledge(this);
     }
+
 
     /**
      *  Check if the current Progress is conprehensive
      */
     get isRoot() {
 
-        return (this.#parentProgress == null || this.#parentProgress == undefined);
+        return (!this.#parentProgress);
+    }
+
+    /**
+     * Check if this is atomic progress
+     * 
+     * *Atomic progress meanning that a progress has no sub(child) progresses
+     */
+    get isAtomic() {
+
+        return (this.#parentProgress && this.#numberOfChild == 0);
+    }
+
+    join(_progress) {
+
+        if (this.#parentProgress) return false;
+
+        this.#parentProgress = _progress;
+
+        return true;
     }
 
     /**
@@ -235,11 +255,18 @@ class ProgressTracker extends EventEmitter {
      */
     push(_progress) {
 
+        //if (this.completed) return false;
+
+        // equivilent to _progress.isChildOf(this)
         if (this.#childProgresses[_progress.symbolName]) return false;
 
-        if (!_progress.isRoot) return false;
+        // this condition for preventing a child progress been push to another
+        // but sometimes multiple progresses may await for a single progress
+        //if (!_progress.isAtomic) return false;
 
         this.#childProgresses[_progress.symbolName] = _progress;
+
+        this.#numberOfChild++;
 
         return true;
     }
@@ -256,6 +283,7 @@ class ProgressTracker extends EventEmitter {
     get completed() {
 
         return (this.#state == ProgressState.COMPLETE);
+        //return (this.#state);
     }
 
     get name() {
@@ -273,14 +301,16 @@ class ProgressTracker extends EventEmitter {
      * 
      * @return {array<string>} eg. ['progress1', 'progress2', 'progress3']
      */
-    get uncompleted() {
+    get uncompletedProgress() {
 
         if (!this.#cacheExpired) return this.#uncompletedCache; 
 
-        this.#uncompletedCache = Object.keys(this.#childProgresses)
-                                    .filter(function (name) {
+        //console.log(Reflect.ownKeys(this.#childProgresses))
+
+        this.#uncompletedCache = Reflect.ownKeys(this.#childProgresses)
+                                    .filter(function (symbol) {
                                         
-                                        const progress = this.#childProgresses[name]
+                                        const progress = this.#childProgresses[symbol]
 
                                         return (!progress.completed);
                                     }.bind(this));

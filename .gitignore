@@ -2,7 +2,9 @@ node_modules/
 process/
 render/
 windows/
-test.js
+
+
+/test.js
 main.js
 structure.js
 

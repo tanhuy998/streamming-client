@@ -1,7 +1,10 @@
 const {EventEmitter} = require('node:events');
 const {ProgressState, ProgressTracker} = require('./progressTracker');
 
-
+/**
+ *  Another kind of tracking progresses
+ *  Use this class in inter progress tracking situation
+ */
 class ProgressListener extends EventEmitter{
 
     /**
@@ -11,18 +14,41 @@ class ProgressListener extends EventEmitter{
      */
     #progressSet;
 
+    /**
+     * @property {string}
+     */
     #name;
 
+    /**
+     * @property {Symbol}
+     */
     #symbolName;
 
+    /**
+     * @property {array<Symbol>}
+     */
     #cacheProgression;
 
+    /**
+     * @property {boolean}
+     */
     #cacheExpire;
 
+    /**
+     * @property {int}
+     */
     #numberOfProgress;
 
+    /**
+     * @property {enum ProgresState}
+     */
     #state;
 
+    /**
+     * 
+     * @param {string} _name 
+     * @param  {...ProgressTracker} _progressSet 
+     */
     constructor(_name, ..._progressSet) {
 
         super();
@@ -39,9 +65,28 @@ class ProgressListener extends EventEmitter{
         this.#InitializeEvent();
     }
 
-    #Init() {
+    #Init() {   
 
-        this.#state = ProgressState.PENDING;
+        // when there 1 progress is passed to constructor
+        // this instance with listen for state of child progresses
+        if (this.#progressSet.length == 1) {
+
+            const target = this.#progressSet[0];
+
+            // trick to call private function in callback
+            // to get rid of closure context isolation
+            const clone_of_this = {
+                listen: this.#listen.bind(this),
+            }
+
+            target.on('update', (function(_childProgressOfTarget) {
+
+                // has to use 'this' pointer in this context
+                // because cannot pass 'this' when listening
+                // on other EventEmitter's event
+                this.listen(_childProgressOfTarget);
+            }).bind(clone_of_this));
+        }
 
         const temp = {};
 
@@ -55,12 +100,17 @@ class ProgressListener extends EventEmitter{
 
             temp[symbolName] = progress;
 
+            this.#listen(progress);
+
             if (!progress.completed) is_AllDone = false;
         }
 
         this.#progressSet = temp;
 
+        this.#state = ProgressState.PENDING;
     }
+
+    
 
     #InitializeEvent() {
 
@@ -78,7 +128,15 @@ class ProgressListener extends EventEmitter{
         })
     }
 
-    #notiy(_event, ...arg) {
+    #listen(_progress) {
+
+        _progress.on('complete', (function() {
+
+            this.check();
+        }).bind(this));
+    }
+
+    #notify(_event, ...arg) {
 
         process.nextTick((function(..._arg) {
 
@@ -86,7 +144,7 @@ class ProgressListener extends EventEmitter{
         }).bind(this), ...arg)
     }
 
-    check() {
+    #checkProgresion() {
 
         let finished_progesses = 0;
 
@@ -99,7 +157,7 @@ class ProgressListener extends EventEmitter{
 
             this.#cacheExpire = true;
 
-            this.#notiy('progress', this.#cacheProgression);
+            this.#notify('progress', this.#cacheProgression);
 
             
         }
@@ -108,18 +166,59 @@ class ProgressListener extends EventEmitter{
 
             this.#cacheExpire = true;
 
-            this.#notiy('finish', this.#cacheProgression);
+            this.#notify('finish', this.#cacheProgression);
         }
     }
 
+    /**
+     * 
+     * @param  {...Symbol} _symbols 
+     * 
+     * @returns {array<Symbol>} if no param is passed
+     * @returns {boolean} if 1 param is passed
+     * @returns {Object[Symbol]} if more than one 
+     */
+    check(..._symbols) {
+
+        this.#checkProgresion();
+
+        if (_symbols.length == 0) return this.progression;
+
+        let result = {};
+
+        for (const symbol of _symbols) {
+
+            if (!(symbol instanceof Symbol)) continue;
+
+            const target = this.#progressSet[symbol];
+
+            if (target) {
+
+                result[symbol] = this.target.completed;
+            }
+        }
+
+        if (_symbols.length < 2) return result[_symbols[0]];
+
+        return result;
+    }
+
+    /**
+     * @returns {enum ProgressState}
+     */
     get finished() {
 
         return this.#state == ProgressState.COMPLETE;
     }
 
+    /**
+     * @returns {array<Symbol>}
+     */
     get progression() {
 
         if (!this.#cacheExpire) return this.#cacheProgression;
+
+        this.#cacheExpire = false;
 
         return Reflect.ownKeys(this.#progressSet)
                         .filter((function(symbol) {

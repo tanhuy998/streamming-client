@@ -75,7 +75,7 @@ class ProgressListener extends EventEmitter{
 
             // trick to call private function in callback
             // to get rid of closure context isolation
-            const clone_of_this = {
+            const copy_cat = {
                 listen: this.#listen.bind(this),
             }
 
@@ -85,7 +85,7 @@ class ProgressListener extends EventEmitter{
                 // because cannot pass 'this' when listening
                 // on other EventEmitter's event
                 this.listen(_childProgressOfTarget);
-            }).bind(clone_of_this));
+            }).bind(copy_cat));
         }
 
         const temp = {};

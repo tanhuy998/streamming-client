@@ -1,4 +1,5 @@
 //const objectClone = require('../objectCloning/objectClone.js');
+const AdapterInterface  = require('./adapterInterface.js');
 
 /**
  * FlexibleClass is designed to be a wrapping proxy for specific class via an adapter
@@ -55,7 +56,7 @@ class FlexibleHelper {
         if (!target[prop]) throw new Error(`Could not asign value to undefined property of ${target.constructor.name}`);
 
         // prevent method overidden
-        if (typeof target[prop] == 'Function') throw new Error(`Could ot overide the method of type '${target.constructor.name}' `);
+        if (target[prop].constructor.name == 'Function') throw new Error(`Could ot overide the method of type '${target.constructor.name}' `);
         
         return true;
     }
@@ -121,14 +122,8 @@ class FlexibleClass {
     constructor(_interface) {
 
         this.interface = _interface;
-
-        this.interface = new Proxy(_interface, {
-
-            set: (target, prop, value) => {
-
-                return FlexibleHelper.resolveSetter(target, prop, value);
-            }
-        })
+        
+        this.#Init();
 
         return new Proxy(this, {
             get: (target, prop, receiver) => {
@@ -141,14 +136,37 @@ class FlexibleClass {
             // },
             set: (target, prop, value) => {
 
+                // FlexibleHelper.resolveSetter just reject  of Flexible's interface
                 return FlexibleHelper.resolveSetter(target, prop, value);
             }
         })
     }
 
+    #Init() {
+
+        this.#checkValidInterface();
+    }
+
+    #checkValidInterface() {
+
+        if (this.interface.constructor.name == 'Object') {
+
+            this.interface = new AdapterInterface(this.interface);
+
+            return;
+        }
+        
+        if (this.interface.constructor.name != AdapterInterface.name) {
+
+            throw new Error(`The Interface of Adapter must be type of 'AdapterInteface' or 'Object'`);
+        }
+    }
+
     alterInterface(_newInterface) {
 
         this.interface = _newInterface;
+
+        this.#checkValidInterface();
     }
 }
 

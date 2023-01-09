@@ -1,21 +1,16 @@
-class A {
+const {FlexibleClass} = require('./flexibleClass.js');
+const AdapterInteface = require('./adapterInterface.js');
 
-    constructor() {
+const interface = new AdapterInteface({
 
-        return new Proxy(this, {
+    doHelloWorld: () => {
 
-            set: (object, key, value, proxy) => {
-
-                object[key] = value;
-
-
-                console.log('set');
-                return true;
-            }
-        })
+        console.log('Hello World!')
     }
-}
+})
 
-const obj = new A();
+const obj = new FlexibleClass(interface);
 
-console.log(obj instanceof A);
+obj.doHelloWorld();
+
+console.log(obj.doHelloWorld === interface.doHelloWorld)

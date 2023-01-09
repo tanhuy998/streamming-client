@@ -1,7 +1,8 @@
+//const objectClone = require('../objectCloning/objectClone.js');
 
 /**
- * FlexibleClass is designed to wrap another class via an adapter
- * This class can invoke methods that it's not defined in class definition
+ * FlexibleClass is designed to be a wrapping proxy for specific class via an adapter
+ * This class can invoke methods that is not defined in class's definition
  * by dealing with the adapter's inteface.
  * 
  * This class is implementing proxy and adapter design pattern
@@ -24,13 +25,13 @@ class FlexibleHelper {
 
         if (!target[prop]) {
             
-            if (FlexibleHelper.isFlexible(target)) throw new Error(`Access undefined property of '${target.constructor.name}' type`, );
+            if (!FlexibleHelper.canFlexible(target)) throw new Error(`Access undefined property of '${target.constructor.name}' type`);
 
             const target_interface = target.interface;
 
             if (!target_interface[prop]) throw new Error(`Access undefined property of '${target.constructor.name}' type`, );
     
-            return target.interface[prop]
+            return target.interface[prop];
         }
     
         return target[prop];
@@ -46,12 +47,15 @@ class FlexibleHelper {
      */
     static resolveSetter(target, prop, value) {
 
-        if (FlexibleClass.isFlexible(target)) {
+        if (FlexibleHelper.canFlexible(target)) {
 
             FlexibleHelper.#preventOverideInterface(target, prop, 'set');
         }
 
         if (!target[prop]) throw new Error(`Could not asign value to undefined property of ${target.constructor.name}`);
+
+        // prevent method overidden
+        if (typeof target[prop] == 'Function') throw new Error(`Could ot overide the method of type '${target.constructor.name}' `);
         
         return true;
     }
@@ -66,7 +70,7 @@ class FlexibleHelper {
      */
     static resolveMethodCall(method , methodArgs, _ArgurmentsList) {
 
-
+    
     }
 
     static #resolveInterface(target) {
@@ -74,7 +78,7 @@ class FlexibleHelper {
 
     }
 
-    static isFlexible(target) {
+    static canFlexible(target) {
 
         return target.constructor.name == 'FlexibleClass';
     }
@@ -92,18 +96,20 @@ class FlexibleHelper {
 
         if (_action == 'set') {
 
-            if (isInterface) throw new Error(`Could not overide 'interface' of ${target.constructor.name}`);
+            if (isInterface) throw new Error(`Could not overide 'interface' of ${target.constructor.name} derived from FlexibleClass`);
 
             const target_interface = target.interface;
 
-            if (target_interface[prop]) throw new Error(`Coould not overide property interface's property of ${target.constructor.name}`)
+            console.log(prop)
+
+            if (target_interface[prop]) throw new Error(`Could not overide interface's property of ${target.constructor.name} derived from FlexibleClass`);
         }
     }
 }
 
 class FlexibleClass {
     /** 
-     * The interface that this class dealed with to do undefined behaviors
+     * The interface that this class deals with to perform undefined behaviors
      * 
      * Have to set access modifier to 'public' because this class delegates a Proxy to behavior interception.
      * 
@@ -112,19 +118,27 @@ class FlexibleClass {
     interface;
     //#internalInterface;
 
-    constructor(__interface) {
+    constructor(_interface) {
 
-        this.#interface = __interface;
+        this.interface = _interface;
+
+        this.interface = new Proxy(_interface, {
+
+            set: (target, prop, value) => {
+
+                return FlexibleHelper.resolveSetter(target, prop, value);
+            }
+        })
 
         return new Proxy(this, {
             get: (target, prop, receiver) => {
 
                 return FlexibleHelper.resolveGetter(target, prop);                
             },
-            apply: (method, methodArgs, _ArgurmentsList) => {
+            // apply: (method, methodArgs, _ArgurmentsList) => {
 
-                return FlexibleHelper.resolveMethodCall(method, methodArgs, _ArgurmentsList);
-            },
+            //     return FlexibleHelper.resolveMethodCall(method, methodArgs, _ArgurmentsList);
+            // },
             set: (target, prop, value) => {
 
                 return FlexibleHelper.resolveSetter(target, prop, value);
@@ -132,13 +146,14 @@ class FlexibleClass {
         })
     }
 
-    alterInterface(_interface) {
+    alterInterface(_newInterface) {
 
-        this.interface = _interface;
+        this.interface = _newInterface;
     }
 }
 
-const obj = new FlexibleClass({});
+
+module.exports = {FlexibleClass, FlexibleHelper};
 
 
 

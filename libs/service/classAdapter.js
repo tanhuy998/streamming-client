@@ -60,7 +60,7 @@ class ClassApdater {
 
             if (keys.length == 0) throw new Error(`'{}' object is inacceptable for '_interface'`);
 
-            this.#bindInterface(_interface);
+            this.#interface = new AdapterInterface(_interface);
 
             this.#isSetedUp = true;
 

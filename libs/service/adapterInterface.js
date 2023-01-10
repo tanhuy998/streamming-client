@@ -46,11 +46,4 @@ class AdapterInterface {
     }
 }
 
-const interface = new AdapterInterface({
-    func: () => {
-
-        console.log('hello world');
-    }
-}) 
-
 module.exports = AdapterInterface;

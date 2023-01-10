@@ -7,6 +7,8 @@ class AdapterInterface {
 
         this.interface = _map;
 
+        this.#Init();
+
         return new Proxy(this, {
             get: (target, prop, receiver) => {
         
@@ -22,10 +24,33 @@ class AdapterInterface {
             // },
             set: (target, prop, value) => {
                 
-                return true;
+                return false;
             },
         });
     }
+
+    #Init() {  
+
+        this.#checkInterface(this.interface);
+    }
+
+    #checkInterface(_object) {
+
+        const type = _object.constructor.name;
+
+        if (type != 'Object') throw new Error(`interface mapping must be type of 'Object'`);
+
+        const keys = Reflect.ownKeys(_object);
+
+        if (keys.length == 0) throw new Error(`The mappiing object could not be empty 'Object'`);
+    }
 }
+
+const interface = new AdapterInterface({
+    func: () => {
+
+        console.log('hello world');
+    }
+}) 
 
 module.exports = AdapterInterface;

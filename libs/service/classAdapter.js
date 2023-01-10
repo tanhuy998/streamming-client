@@ -1,7 +1,14 @@
+const AdapterInterface = require("./adapterInterface");
 
+/**
+ * An adapter give an interface for a proxy class(e.g: instances of Flexible, ....) interact with the target object 
+ * beware of accessing and invoking any function of the interface because this class just provides the interface. 
+ * Invoking any interface's functions would cause unexpecting result.
+ * Use FlexibleClass instance for invoking interface's function to achieve the desired result.
+ */
 class ClassApdater {
 
-    #map;
+    #interface;
 
     #isSetedUp;
 
@@ -9,9 +16,15 @@ class ClassApdater {
 
     #changable;
 
-    constructor(_object, _mapping, _changable = true) {
+    /**
+     * 
+     * @param {Object} _object 
+     * @param {Object/AdapterInterface} _mapping 
+     * @param {boolean} _changable 
+     */
+    constructor(_object, _mapping, _changable = false) {
 
-        this.#map = _mapping;
+        this.#interface = _mapping;
         this.#targetObject = _object;
         this.#isSetedUp = false;
         this.#changable = _changable
@@ -21,18 +34,16 @@ class ClassApdater {
 
     #Init() {
 
-        this.map(this.#map);
+        this.map(this.#interface);
     }
     
     get interface() {
 
-        return this.#map;
+        return this.#interface;
     }
 
     /**
      * Map the interface for the Adapter
-     * if _interface argument is passed '{}' 
-     * The interface will be the whole target object
      * 
      * @param {Object} _interface 
      * @returns boolean
@@ -41,31 +52,70 @@ class ClassApdater {
 
         if (this.#isSetedUp && !this.#changable) return false;
 
-        if (this.#map != undefined || this.map !== null) {
+        const interface_type = _interface.constructor.name;
 
-            return false;
-        }
+        if (interface_type == 'Object') {
 
-        const keys = Reflect.ownKeys(_interface);
+            const keys = Reflect.ownKeys(_interface);
 
-        if (keys.length == 0) {
+            if (keys.length == 0) throw new Error(`'{}' object is inacceptable for '_interface'`);
 
-            this.#map = this.#targetObject;
+            this.#bindInterface(_interface);
+
+            this.#isSetedUp = true;
 
             return true;
         }
 
-        for (const key of keys) {
-            
-            if (typeof _interface[key] != 'function') continue;
+        if (interface_type == 'AdapterInterface') {
 
-            _interface[key].bind(this.#targetObject);
+            this.#interface = _interface;
+
+            this.#isSetedUp = true;
+
+            return true;
         }
 
-        this.#isSetedUp = true;
+        throw new  Error(`'_interface' must be type of Object or AdapterInterface`);
+    }
 
-        return true;
+
+    // not stable
+    // not funciton
+    #mapWholeObject(_object) {
+
+        const object_type = _object.constructor.name;
+
+        if (object_type == 'AdapterInterface') return _object;
+
+        if (object_type == 'Object') return new AdapterInterface(_object);
+
+
+        const props = Reflect.ownKeys(_object);
+
+        for (const prop in props) {
+
+
+        }
+
+        return
+    }
+
+    /**
+     * 
+     * @param {Object} _interface 
+     * 
+     * @returns {Oject}
+     */
+    #bindInterface(_interface) {
+
+        for (const prop in _interface) {
+
+            if (prop.constructor.name == 'Function') prop.bind(this.#targetObject);
+        }
+
+        return _interface;
     }
 }
 
-module.exports = {ClassApdater}
+module.exports = ClassApdater;

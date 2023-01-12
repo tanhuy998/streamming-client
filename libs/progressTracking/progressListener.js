@@ -55,7 +55,7 @@ class ProgressListener extends EventEmitter{
 
         this.#name = _name;
         this.#symbolName = Symbol(_name);
-        this.#cacheProgression = undefined;
+        this.#cacheProgression = [];
         this.#cacheExpire = true;
         this.#progressSet = _progressSet;
         this.#state = ProgressState.REACHED;
@@ -69,24 +69,27 @@ class ProgressListener extends EventEmitter{
 
         // when there 1 progress is passed to constructor
         // this instance with listen for state of child progresses
-        if (this.#progressSet.length == 1) {
+        // if (this.#progressSet.length == 1) {
 
-            const target = this.#progressSet[0];
+        //     const target = this.#progressSet[0];
 
-            // trick to call private function in callback
-            // to get rid of closure context isolation
-            const copy_cat = {
-                listen: this.#listen.bind(this),
-            }
+        //     // trick to call private function in callback
+        //     // to get rid of closure context isolation
+        //     const copy_cat = {
+        //         notify: this.#notify.bind(this),
+        //     }
 
-            target.on('update', (function(_childProgressOfTarget) {
+        //     target.on('update', (function(_childProgressOfTarget) {
 
-                // has to use 'this' pointer in this context
-                // because cannot pass 'this' when listening
-                // on other EventEmitter's event
-                this.listen(_childProgressOfTarget);
-            }).bind(copy_cat));
-        }
+        //         // has to use 'this' pointer in this context
+        //         // because cannot pass 'this' when listening
+        //         // on other EventEmitter's event
+        //         //this.listen(_childProgressOfTarget);
+
+        //         this.notify('progress', _childProgressOfTarget);
+
+        //     }).bind(copy_cat));
+        // }
 
         const temp = {};
 
@@ -114,12 +117,11 @@ class ProgressListener extends EventEmitter{
 
     #InitializeEvent() {
 
-        this.on('progress', (_finishedProgress) => {
+        this.on('progress', (_listOfFinishedProgress) => {
 
         })
 
         this.on('finish', (_progressSet) => {
-
 
         })
 
@@ -130,8 +132,8 @@ class ProgressListener extends EventEmitter{
 
     #listen(_progress) {
 
-        _progress.on('complete', (function() {
-
+        _progress.on('completed', (function(progress) {
+            
             this.check();
         }).bind(this));
     }
@@ -148,25 +150,23 @@ class ProgressListener extends EventEmitter{
 
         let finished_progesses = 0;
 
-        for (const progress of this.#progressSet) {
+        for (const symbolName of Reflect.ownKeys(this.#progressSet)) {
 
-            if (progress.completed) finished_progesses++;
+            if (this.#progressSet[symbolName].completed) finished_progesses++;
         }
 
         if (finished_progesses > this.#cacheProgression.length) {
 
             this.#cacheExpire = true;
 
-            this.#notify('progress', this.#cacheProgression);
-
+            this.#notify('progress', this.progression);
             
-        }
+            if (finished_progesses == this.#numberOfProgress) {
 
-        if (finished_progesses == this.#numberOfProgress) {
-
-            this.#cacheExpire = true;
-
-            this.#notify('finish', this.#cacheProgression);
+                this.#state = ProgressState.COMPLETE;
+    
+                this.#notify('finish', this.progression);
+            }
         }
     }
 
@@ -220,11 +220,13 @@ class ProgressListener extends EventEmitter{
 
         this.#cacheExpire = false;
 
-        return Reflect.ownKeys(this.#progressSet)
+        this.#cacheProgression = Reflect.ownKeys(this.#progressSet)
                         .filter((function(symbol) {
 
                             return (this.#progressSet[symbol].completed);
-                        }).bind(this))
+                        }).bind(this));
+        
+        return this.#cacheProgression;
     }
 }
 

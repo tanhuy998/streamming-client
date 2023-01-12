@@ -166,13 +166,15 @@ class ProgressTracker extends EventEmitter {
             }, this)
         }
 
+
         this.#cacheExpired = true;
 
         this.#updateState();
 
         process.nextTick((_this, _progress) => {
             
-            this.emit('update', _progress)
+            this.emit('update', _progress);
+            _progress.emit('completed', _progress);
         }, this, _progress)
 
         return true;
@@ -191,7 +193,7 @@ class ProgressTracker extends EventEmitter {
 
         process.nextTick((_this) => {
 
-            _this.emit('completed');
+            _this.emit('completed', _this);
         }, this)
         
         return this.#parentProgress.acknowledge(this);
@@ -212,8 +214,8 @@ class ProgressTracker extends EventEmitter {
         this.#state = ProgressState.COMPLETE;
 
         process.nextTick((_this) => {
-
-            _this.emit('completed');
+            
+            _this.emit('completed', _this);
         }, this)
 
         if (this.isRoot) return;

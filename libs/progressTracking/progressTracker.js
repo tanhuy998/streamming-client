@@ -63,12 +63,17 @@ class ProgressTracker extends EventEmitter {
      * 
      * @property {Symbol}
      */
-    #symbol
+    #symbol;
 
     /**
      * 
      */
-    #numberOfChild
+    #numberOfChild;
+
+    /**
+     * @property {any}
+     */
+    #payload;
 
     /**
      *  Constructor
@@ -87,6 +92,7 @@ class ProgressTracker extends EventEmitter {
         this.#uncompletedCache = undefined;
         this.#cacheExpired = true;
         this.#symbol = Symbol(_name);
+        this.#payload = undefined;
 
         this.#Init();
         this.#InitializeEvents();
@@ -170,6 +176,7 @@ class ProgressTracker extends EventEmitter {
         this.#cacheExpired = true;
 
         this.#updateState();
+        this.#resolvePayload(_progress);
 
         process.nextTick((_this, _progress) => {
             
@@ -185,11 +192,13 @@ class ProgressTracker extends EventEmitter {
      * 
      * @return {boolean}
      */
-    done() {
+    done(_resolveData) {
 
-        if (!this.isAtomic) return false;
+        if (!this.isAtomic) throw new Error(this.symbolName, 'is not atomic progress, cannot do method \'done\'');
 
         this.#state = ProgressState.COMPLETE;
+
+        this.#payload = _resolveData;
 
         process.nextTick((_this) => {
 
@@ -199,6 +208,20 @@ class ProgressTracker extends EventEmitter {
         return this.#parentProgress.acknowledge(this);
     }
 
+    #resolvePayload(_childProgress) {
+
+        if (this.isAtomic) throw new Error('Atomic progress cannot do this \'#resolvePayload\' method');
+
+        if (_childProgress.isChildOf(this)) throw new Error(_childProgress.symbolName, 'passed to \'#resolvePayload\' is not child of', this.symbolName, 'progress');
+
+        if (!_childProgress.completed) throw new Error(_childProgress.symbolName, 'has not completed yet');
+
+        if (!this.#payload) this.#payload = {};
+
+        this.#payload[_childProgress.symbolName] = _childProgress.payload;
+
+        return true;
+    }
 
     /**
      *  Update a non atomic progress's state
@@ -296,6 +319,11 @@ class ProgressTracker extends EventEmitter {
     get symbolName() {
 
         return this.#symbol;
+    }
+
+    get payload() {
+
+        return this.#payload;
     }
 
     /**

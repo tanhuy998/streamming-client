@@ -79,7 +79,7 @@ class ProgressTracker extends EventEmitter {
      *  Constructor
      * 
      * @param {string} _name The Progress's name
-     * @param  {...ProgressTracker} list 
+     * @param  {...ProgressTracker} list a
      */
     constructor(_name, ...list) {
 
@@ -194,7 +194,8 @@ class ProgressTracker extends EventEmitter {
      */
     done(_resolveData) {
 
-        if (!this.isAtomic) throw new Error(this.symbolName, 'is not atomic progress, cannot do method \'done\'');
+        if (!this.isAtomic) throw new Error(this.name + ' is not atomic progress, cannot do method \'done\'');
+
 
         this.#state = ProgressState.COMPLETE;
 
@@ -204,17 +205,18 @@ class ProgressTracker extends EventEmitter {
 
             _this.emit('completed', _this);
         }, this)
-        
-        return this.#parentProgress.acknowledge(this);
+
+        if (!this.#parentProgress) return true;
+        else return this.#parentProgress.acknowledge(this);
     }
 
     #resolvePayload(_childProgress) {
 
         if (this.isAtomic) throw new Error('Atomic progress cannot do this \'#resolvePayload\' method');
 
-        if (_childProgress.isChildOf(this)) throw new Error(_childProgress.symbolName, 'passed to \'#resolvePayload\' is not child of', this.symbolName, 'progress');
+        if (!_childProgress.isChildOf(this)) throw new Error(_childProgress.name + ' passed to \'#resolvePayload\' is not child of ' + this.name + ' progress');
 
-        if (!_childProgress.completed) throw new Error(_childProgress.symbolName, 'has not completed yet');
+        if (!_childProgress.completed) throw new Error(_childProgress.name + ' has not completed yet');
 
         if (!this.#payload) this.#payload = {};
 
@@ -261,7 +263,8 @@ class ProgressTracker extends EventEmitter {
      */
     get isAtomic() {
 
-        return (this.#parentProgress && this.#numberOfChild == 0);
+        //return (this.#parentProgress && this.#numberOfChild == 0);
+        return this.#numberOfChild == 0;
     }
 
     join(_progress) {

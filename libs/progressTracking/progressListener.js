@@ -156,7 +156,7 @@ class ProgressListener extends EventEmitter{
         }
 
         if (finished_progesses > this.#cacheProgression.length) {
-
+            
             this.#cacheExpire = true;
 
             this.#notify('progress', this.progression);

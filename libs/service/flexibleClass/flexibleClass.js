@@ -1,5 +1,5 @@
 //const objectClone = require('../objectCloning/objectClone.js');
-const AdapterInterface  = require('./adapterInterface.js');
+const AdapterInterface  = require('../adapterInterface/adapterInterface.js');
 
 /**
  * FlexibleClass is designed to do undefined behaviors 

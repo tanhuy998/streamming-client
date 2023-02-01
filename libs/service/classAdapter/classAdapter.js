@@ -1,4 +1,4 @@
-const AdapterInterface = require("./adapterInterface");
+const AdapterInterface = require("../adapterInterface/adapterInterface");
 
 /**
  * An adapter give an interface for a proxy class(e.g: instances of Flexible, ....) interact with the target object 

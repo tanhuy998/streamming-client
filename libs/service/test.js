@@ -1,5 +1,5 @@
-const {FlexibleClass} = require('./flexibleClass.js');
-const AdapterInteface = require('./adapterInterface.js');
+const {FlexibleClass} = require('./flexibleClass/flexibleClass.js');
+const AdapterInteface = require('./adapterInterface/adapterInterface.js');
 
 const interface = new AdapterInteface({
 

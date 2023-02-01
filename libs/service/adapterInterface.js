@@ -13,7 +13,7 @@ class AdapterInterface {
             get: (target, prop, receiver) => {
         
                 const target_interface = target.interface;
-        
+                //console.log('adapterInterface', prop);
                 if (!target_interface[prop]) throw new Error(`Access undefined property of '${target.constructor.name}' type`, );
             
                 return target.interface[prop];           

@@ -36,6 +36,11 @@ class ClassApdater {
 
         this.map(this.#interface);
     }
+
+    get target() {
+
+        return this.#targetObject;
+    }
     
     get interface() {
 

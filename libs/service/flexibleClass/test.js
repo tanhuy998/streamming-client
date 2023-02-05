@@ -9,13 +9,11 @@ const _interface = new AdapterInteface({
 });
 
 
-const flexibleObject = new FlexibleClass(_interface);
+const flexibleObject = new FlexibleClass(_interface).launch();
 
 // Have to call the launch() method after create new instance of FlexibleClass
 // in order to call the undefined behaviors
-flexibleObject.launch();
-
-console.log(flexibleObject.printHelloWorld)
+//flexibleObject.launch();
 
 //------------------------------------------------------------------------------------------------
 
@@ -25,9 +23,8 @@ const anotherFlexibleObject = new FlexibleClass({
 
         console.log('Hello World');
     }
-}).launch()
+}).launch();
 
-console.log(anotherFlexibleObject.printHelloWorld)
 
 //--------------------------------------------------------------------------------------------------------
 
@@ -44,7 +41,9 @@ class DerivedFromFlexibleClass extends FlexibleClass {
             }
         }
 
-        super(_interface);
+        super(_interface, false);
+
+        //return super.launch();
     }
 
     randomMethod() {
@@ -59,8 +58,8 @@ class DerivedFromFlexibleClass extends FlexibleClass {
 }
 
 
-const derivedObject = new DerivedFromFlexibleClass();
-derivedObject.launch();
+const derivedObject = new DerivedFromFlexibleClass().launch();
+//derivedObject.launch();
 
 // guest the outpur
 console.log('Test for the invoke priority of FlexibleClass method');
@@ -85,7 +84,9 @@ class AnotherClass extends FlexibleClass {
             }
         }
 
-        super(_interface);
+        super(_interface, false);
+
+        //return super.launch();
     }
 }
 

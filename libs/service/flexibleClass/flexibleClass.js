@@ -14,6 +14,7 @@ class FlexibleHelper {
     static get PROTOTYPE() {
 
         return FlexibleHelper.#prototype;
+
     }
 
     /**
@@ -43,11 +44,33 @@ class FlexibleHelper {
             return target.interface[prop];
         }
 
+        if (prop == 'interface') {
+            //console.log('get interface', prop)
+            return FlexibleHelper.#handleInterfaceCall(target, _next);
+        }
+
         //console.log('{hasProp}')
         // 
         if (_next) return _next(target, prop);
     
         return target[prop];
+    }
+
+    static #handleInterfaceCall(target, _next) {
+
+        const next = _next || ((target, prop) => target[prop]);
+
+        //console.log(next)
+
+        const revocable = Proxy.revocable(target.interface, {
+            get: next
+        })
+        
+        process.nextTick((_revocable) => {
+            _revocable.revoke();
+        }, revocable)
+
+        return revocable.proxy;
     }
     
     /**
@@ -86,11 +109,6 @@ class FlexibleHelper {
     static resolveMethodCall(method , methodArgs, _ArgurmentsList) {
 
     
-    }
-
-    static #resolveInterface(target) {
-
-
     }
 
     static canFlexible(target) {
@@ -157,12 +175,18 @@ class FlexibleClass {
      * @property {Object} 
      */
     interface;
+    #__revocable;
     
 
-    constructor(_interface) {
+    constructor(_interface, _isInstantiate = true) {
         this.interface = _interface;
         
         this.#Init();
+
+        //if (!new.target)
+        //return this.launch({});
+
+        //if (_isInstantiate) return this.launch();
     }
 
     #Init() {
@@ -192,6 +216,10 @@ class FlexibleClass {
     launch(_constraint) {
 
         return this.#_resolveFlexibility(_constraint); 
+        //return FlexibleHelper.resolveFlexible(this, _constraint);
+        // this.#__revocable = revocable;
+
+        // return this.#__revocable.proxy;
     }
 
 

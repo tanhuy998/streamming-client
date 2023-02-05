@@ -1,21 +1,5 @@
-const {FlexibleClass} = require('./flexibleClass/flexibleClass.js');
-const AdapterInteface = require('./adapterInterface/adapterInterface.js');
-
-const interface = new AdapterInteface({
-
-    doHelloWorld: () => {
-
-        console.log('Hello World!')
-    }
-})
-
-const obj = new FlexibleClass(interface);
-
-obj.doHelloWorld();
-
-console.log(obj.doHelloWorld === interface.doHelloWorld)
-
-/////////////////////////////////////////////
+const ClassApdater = require('./classAdapter/classAdapter.js');
+const Service = require('./service.js');
 
 const dbObj = {
 
@@ -30,7 +14,9 @@ const dbObj = {
     }
 }
 
-const adapter = new ClassApdater(dbObj, {
+// The adapter for the dbObj
+// we must use 'function' object for all the method for right context of 'this' keyword
+const dbAdapter = new ClassApdater(dbObj, {
     connect: function() {
 
         return this.connectMongodb();
@@ -41,6 +27,26 @@ const adapter = new ClassApdater(dbObj, {
     }
 })
 
-const service = new Service(adapter).launch();
+class DatabaseService extends Service {
 
-console.log(service.getProp());
+    constructor(adapter) {
+
+        super(adapter);
+
+        //return super.launch();
+    }
+
+    connect() {
+
+        return 'DatabaseService connect method'
+    }
+}
+
+const service = new DatabaseService(dbAdapter).launch();
+
+console.log(service.connect());
+
+console.log(service.interface.connect())
+
+// reference to interface will cause error
+// console.log(service.interface)
